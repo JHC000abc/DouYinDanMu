@@ -1,0 +1,224 @@
+/* === CSS 变量定义 === */
+:root {
+    --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    --container-bg: rgba(255, 255, 255, 0.85);
+    --card-bg: rgba(255, 255, 255, 0.95);
+    --text-primary: #2c3e50;
+    --text-secondary: #7f8c8d;
+    --border-color: rgba(255, 255, 255, 0.9);
+    --input-bg: rgba(255, 255, 255, 0.9);
+    --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 8px 32px rgba(31, 38, 135, 0.1);
+    --log-bg: #2d3436;
+    --log-text: #f1f2f6;
+    --accent-color: #3498db;
+}
+
+body.dark-mode {
+    --bg-gradient: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+    --container-bg: rgba(30, 30, 30, 0.8);
+    --card-bg: rgba(45, 45, 45, 0.95);
+    --text-primary: #ecf0f1;
+    --text-secondary: #bdc3c7;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --input-bg: rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --log-bg: #1e1e1e;
+    --log-text: #dfe6e9;
+    --accent-color: #5dade2;
+}
+
+html { height: 100%; }
+body {
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    background: var(--bg-gradient); background-attachment: fixed;
+    margin: 0; padding: 20px; color: var(--text-primary);
+    height: 100%; box-sizing: border-box; overflow: hidden;
+    transition: color 0.3s, background 0.3s;
+}
+
+.container {
+    max-width: 1400px; margin: 0 auto;
+    background: var(--container-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    padding: 20px; border-radius: 20px; box-shadow: var(--shadow-md); border: 1px solid var(--border-color);
+    height: 100%; box-sizing: border-box; display: flex; flex-direction: column;
+}
+
+.header-row { margin-top: 0; padding-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--accent-color); flex-shrink: 0; }
+.header-title { font-size: 22px; font-weight: bold; color: var(--text-primary); display: flex; align-items: center; gap: 10px; }
+.stats-badge { font-size: 13px; background: var(--accent-color); color: white; padding: 4px 12px; border-radius: 30px; font-weight: 500; }
+.header-controls { display: flex; align-items: center; gap: 15px; }
+.btn-icon { font-size: 20px; cursor: pointer; color: var(--text-primary); transition: 0.3s; padding: 5px; border-radius: 5px; }
+.btn-icon:hover { background: rgba(0,0,0,0.1); color: var(--accent-color); transform: rotate(90deg); }
+
+.theme-switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+.theme-switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+.slider:before { position: absolute; content: "☀️"; display: flex; align-items: center; justify-content: center; font-size: 14px; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: #2c3e50; }
+input:checked + .slider:before { transform: translateX(24px); content: "🌙"; background-color: #f1c40f; }
+
+.input-group { display: flex; gap: 10px; margin-bottom: 15px; background: var(--input-bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); flex-shrink: 0; }
+input { flex: 1; padding: 10px 15px; border: 1px solid transparent; background: rgba(255,255,255,0.6); color: #333; border-radius: 8px; outline: none; font-size: 14px; transition: all 0.3s; }
+body.dark-mode input { background: rgba(0,0,0,0.3); color: #ecf0f1; }
+input:focus { border-color: var(--accent-color); background: #fff; }
+body.dark-mode input:focus { background: #333; }
+
+button { padding: 8px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: inherit; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; backdrop-filter: blur(4px); }
+.btn-add { background: #27ae60; color: white; font-size: 14px; box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3); }
+.btn-add:hover { background: #219150; transform: translateY(-2px); }
+
+.card-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; flex: 1; overflow-y: auto; overflow-x: hidden; padding: 10px; margin: 0 -10px; align-content: start; }
+@media (max-width: 1400px) { .card-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 1000px) { .card-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .card-grid { grid-template-columns: 1fr; } }
+
+.card-grid::-webkit-scrollbar { width: 8px; }
+.card-grid::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); border-radius: 4px; }
+.card-grid::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
+
+/* === 卡片样式 === */
+.card {
+    background: var(--card-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color); border-radius: 12px; padding: 15px;
+    box-shadow: var(--shadow-sm); transition: transform 0.3s, box-shadow 0.3s;
+    position: relative; overflow: hidden; height: 320px; display: flex; flex-direction: column;
+}
+.card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--accent-color); z-index: 10; }
+
+/* 🔴 红色：手动暂停 */
+.card-stopped { background-color: rgba(255, 235, 238, 0.9) !important; border-color: #ff7675 !important; }
+body.dark-mode .card-stopped { background-color: rgba(60, 20, 20, 0.8) !important; border-color: #c0392b !important; }
+.card-stopped .anchor-name { color: #c0392b !important; text-decoration: line-through; opacity: 0.8; }
+
+/* ⚫ 灰色：直播结束 - 强化视觉 */
+.card-ended {
+    background-color: rgba(220, 220, 220, 0.98) !important;
+    border-color: #95a5a6 !important;
+    filter: grayscale(100%);
+}
+body.dark-mode .card-ended { background-color: rgba(20, 20, 20, 0.95) !important; border-color: #555 !important; }
+.card-ended .anchor-name { color: #7f8c8d !important; }
+
+/* 直播结束水印 */
+.card-ended::after {
+    content: "直播已结束";
+    position: absolute;
+    top: 45%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-12deg);
+    font-size: 26px;
+    font-weight: 800;
+    color: rgba(0,0,0,0.4);
+    border: 4px solid rgba(0,0,0,0.4);
+    padding: 10px 30px;
+    border-radius: 10px;
+    pointer-events: none;
+    z-index: 100;
+    white-space: nowrap;
+}
+body.dark-mode .card-ended::after { color: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.25); }
+
+.card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 8px; flex-shrink: 0; }
+.info-box { flex: 1; min-width: 0; padding-right: 10px; }
+.anchor-name { font-weight: 700; font-size: 16px; color: var(--text-primary); display: block; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-id { font-size: 12px; color: var(--text-secondary); display: block; font-family: monospace; letter-spacing: 0.5px; }
+
+.status-badge { font-size: 12px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; font-weight: 600; display: flex; align-items: center; gap: 5px; border: 1px solid transparent; }
+.running { color: #00b894; background: rgba(0, 184, 148, 0.1); border-color: rgba(0, 184, 148, 0.2); }
+.stopped { color: #ff7675; background: rgba(255, 118, 117, 0.1); border-color: rgba(255, 118, 117, 0.2); }
+.ended { color: #2d3436; background: rgba(189, 195, 199, 0.3); border-color: #bdc3c7; }
+body.dark-mode .ended { color: #bdc3c7; background: rgba(255, 255, 255, 0.1); border-color: #555; }
+
+.status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.running .status-dot { background: #00b894; box-shadow: 0 0 6px #00b894; }
+.stopped .status-dot { background: #ff7675; }
+.ended .status-dot { background: #636e72; }
+
+.log-area { background: var(--log-bg); color: var(--log-text); padding: 10px; border-radius: 8px; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; flex: 1; overflow-y: auto; margin-bottom: 12px; line-height: 1.5; word-break: break-all; position: relative; border: 1px solid rgba(0,0,0,0.1); }
+.log-area::-webkit-scrollbar { width: 6px; }
+.log-area::-webkit-scrollbar-thumb { background: #636e72; border-radius: 3px; }
+.log-item { display: block; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 3px 0; }
+
+.card-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.btn-action { flex: 1; font-size: 12px; padding: 8px; color: white; border-radius: 6px; display: none; }
+.btn-start { background: linear-gradient(135deg, #3498db, #2980b9); }
+.btn-stop { background: linear-gradient(135deg, #e67e22, #d35400); }
+.btn-download { background: #2ecc71; color: white; border: none; }
+
+/* 🌟 核心修改：直达按钮增大 */
+.btn-link {
+    background: #636e72; color: white;
+    padding: 8px 16px; /* 增大内边距 */
+    font-size: 13px; font-weight: bold;
+    min-width: 70px;
+    border: none;
+}
+.btn-del { background: transparent; color: #e74c3c; border: 1px solid #e74c3c; width: 32px; font-size: 14px; padding: 0; }
+body.dark-mode .btn-del { color: #ff7675; border-color: #ff7675; }
+
+.btn-link, .btn-download, .btn-del { border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+.btn-link:hover, .btn-download:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+/* 配置弹窗 */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 1000; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--card-bg); width: 450px; padding: 25px; border-radius: 16px; box-shadow: var(--shadow-md); border: 1px solid var(--border-color); }
+.modal h3 { margin-top: 0; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 20px; }
+.setting-title { margin: 0 0 10px 0; color: var(--text-primary); font-size: 14px; }
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 5px; color: var(--text-secondary); font-size: 13px; }
+.form-group input { width: 100%; box-sizing: border-box; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+.btn-cancel { background: transparent; border: 1px solid var(--text-secondary); color: var(--text-secondary); }
+.btn-test { background: #f39c12; color: white; border:none; }
+.btn-save { background: var(--accent-color); color: white; border:none; }
+
+.empty-tip {
+    text-align: center; color: var(--text-secondary); padding: 60px;
+    font-size: 18px; border: 2px dashed var(--border-color); border-radius: 12px;
+    grid-column: 1 / -1; align-self: center; background: rgba(0,0,0,0.02);
+}
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.card { animation: fadeIn 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
+
+
+/* 新增的一键启动按钮样式 */
+.btn-global-start {
+    background-color: var(--success-color, #28a745); /* 使用定义好的绿色，或者默认绿色 */
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-right: 15px; /* 与设置图标隔开距离 */
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px; /* 图标和文字的间距 */
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.btn-global-start:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+}
+
+.btn-global-start:active {
+    transform: translateY(0);
+}
+
+/* 移动端适配：屏幕太小时只显示图标 */
+@media (max-width: 600px) {
+    .btn-global-start {
+        padding: 6px 10px;
+    }
+    .btn-global-start span { /* 如果你想在移动端隐藏文字 */
+        display: none;
+    }
+}

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抖音直播监控台 v5.3</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header-row">
+            <div class="header-title">
+                <i class="fas fa-satellite-dish" style="color: var(--accent-color);"></i>
+                抖音直播监控台
+                <span class="stats-badge" id="total-count">监控中: 0</span>
+            </div>
+
+            <div class="header-controls">
+                <button class="btn-global-start" onclick="startAllRooms()" title="启动当前列表所有任务">
+                    <i class="fas fa-rocket"></i> 一键启动
+                </button>
+
+                <i class="fas fa-cog btn-icon" onclick="openSettingsModal()" title="系统设置 (数据库/刷新率)"></i>
+                <label class="theme-switch" title="切换暗黑模式">
+                    <input type="checkbox" id="darkModeToggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <input type="text" id="configInput" placeholder="在此粘贴油猴脚本复制的 JSON 配置 (包含主播信息)...">
+            <button class="btn-add" onclick="addRoom()"><i class="fas fa-plus"></i> 添加监控</button>
+        </div>
+
+        <div id="roomList" class="card-grid"></div>
+    </div>
+
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <h3><i class="fas fa-sliders-h"></i> 系统设置</h3>
+
+            <div class="setting-section">
+                <h4 class="setting-title"><i class="fas fa-stopwatch"></i> 刷新设置</h4>
+                <div class="form-group">
+                    <label>卡片刷新频率 (毫秒)</label>
+                    <input type="number" id="refreshRate" placeholder="2000" value="2000">
+                    <small style="color: var(--text-secondary); font-size: 11px;">越小更新越快，建议不低于 1000ms</small>
+                </div>
+            </div>
+
+            <div class="setting-section" style="border-top: 1px dashed var(--border-color); padding-top: 15px; margin-top: 15px;">
+                <h4 class="setting-title"><i class="fas fa-database"></i> 数据库连接</h4>
+                <div class="form-grid">
+                    <div class="form-group"><label>Host</label><input type="text" id="dbHost"></div>
+                    <div class="form-group"><label>Port</label><input type="text" id="dbPort"></div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group"><label>User</label><input type="text" id="dbUser"></div>
+                    <div class="form-group"><label>Pass</label><input type="password" id="dbPass"></div>
+                </div>
+                <div class="form-group"><label>Database</label><input type="text" id="dbName"></div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeSettingsModal()">关闭</button>
+                <button class="btn-test" onclick="testDBConnection()">测试DB</button>
+                <button class="btn-save" onclick="saveAllSettings()">保存全部</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
