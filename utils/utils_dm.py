@@ -7,20 +7,18 @@
 @desc: 
 
 """
-
 import threading
 import websocket
 import gzip
-import json
 import time
 import urllib.request
 import requests
 import re
-import os
 import shutil
 from urllib.parse import urlencode
 from datetime import datetime
 from models.models_dm import LiveDanmakuModel
+from utils.utils_db import *
 
 
 os.environ["EXECJS_RUNTIME"] = "Node"
@@ -41,9 +39,6 @@ except ImportError:
 
 
 ROOMS_CONFIG_FILE = "config/rooms.json"
-
-
-SessionLocal = None
 
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -626,7 +621,8 @@ class RoomManager:
             pass
 
     def _save_db(self, data):
-        if not SessionLocal: return
+        if not SessionLocal:
+            return
         session = SessionLocal()
         try:
             log = LiveDanmakuModel(**data)
