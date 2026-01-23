@@ -48,6 +48,6 @@ python -m grpc_tools.protoc -I. --python_out=. dy.proto
 6. 浏览器安装油候脚本（省略）
 7. 安装douyin.js脚本
 8. 点开直播界面，复制ws地址到监控台即可
-![img.png](img.png)
-![img_1.png](img_1.png)
-![img_2.png](img_2.png)
+![img.png](src/images/img.png)
+![img_1.png](src/images/img_1.png)
+![img_2.png](src/images/img_2.png)

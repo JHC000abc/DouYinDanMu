@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>直播流地址解析</title>
+    <link rel="stylesheet" href="/css/monitor.css">
+</head>
+<body>
+
+<div class="container">
+    <h1>抖音直播流解析器</h1>
+
+    <div class="input-group">
+        <input type="text" id="urlInput" placeholder="请输入直播间链接 或 房间号 (例如: 963255951180)" value="">
+        <button id="parseBtn" onclick="parseStream()">解析</button>
+    </div>
+
+    <div id="status" class="status-msg"></div>
+
+    <div class="result-area" id="resultArea">
+        <div class="result-box" id="streamUrl"></div>
+        <div class="action-row">
+            <button class="copy-btn" onclick="copyToClipboard()">一键复制</button>
+        </div>
+    </div>
+</div>
+
+<script src="/js/monitor.js"></script>
+
+</body>
+</html>

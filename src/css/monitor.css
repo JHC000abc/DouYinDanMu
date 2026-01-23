@@ -1,0 +1,311 @@
+:root {
+    --primary-color: #fe2c55; /* 抖音红 */
+    --bg-color: #121212;
+    --card-bg: #1e1e1e;
+    --text-color: #ffffff;
+    --border-color: #333;
+    --success-color: #4ade80; /* 新增：成功绿色 */
+    --error-color: #ff4d4f;   /* 新增：错误红色 */
+}
+
+body {
+    /* ⚠️ 移除 Emoji 字体族，现在完全依靠 CSS 绘制 */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.container {
+    background-color: var(--card-bg);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    max-width: 600px;
+    text-align: center;
+}
+
+/* --- H1 标题红点图标 (🔴) --- */
+h1 {
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 使用伪元素绘制红点和光晕 */
+h1::before {
+    content: '';
+    display: block;
+    width: 0.8em;
+    height: 0.8em;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+    margin-right: 0.5em;
+    box-shadow: 0 0 10px rgba(254, 44, 85, 0.6);
+}
+/* --------------------------- */
+
+.input-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+}
+
+input[type="text"] {
+    flex: 1;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: #2a2a2a;
+    color: white;
+    outline: none;
+    font-size: 1rem;
+}
+
+input[type="text"]:focus {
+    border-color: var(--primary-color);
+}
+
+button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex; /* 用于居中图标和文本 */
+    align-items: center;
+    justify-content: center;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+button:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+}
+
+/* --- 纯 CSS 加载动画 --- */
+.loading-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 0.8s linear infinite;
+    margin-right: 8px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+/* ----------------------- */
+
+.result-area {
+    margin-top: 1.5rem;
+    text-align: left;
+    display: none;
+}
+
+.result-box {
+    background-color: #2a2a2a;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 15px;
+    word-break: break-all;
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--success-color);
+    margin-bottom: 10px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.action-row {
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* --- 复制按钮图标 (📋 -> ✅) --- */
+.copy-btn {
+    background-color: #333;
+    border: 1px solid #555;
+    padding: 8px 16px 8px 38px; /* 左侧留出图标空间 */
+    font-size: 0.9rem;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.copy-btn:hover {
+    background-color: #444;
+    border-color: #666;
+}
+
+/* 图标通用绝对定位 */
+.copy-btn::before,
+.copy-btn::after {
+    content: '';
+    position: absolute;
+    left: 12px;
+    transition: all 0.3s ease;
+}
+
+/* 默认状态：剪贴板图标 (📋) */
+.copy-btn::before {
+    /* 剪贴板板身 */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 18px;
+    border: 2px solid currentColor;
+    border-radius: 2px;
+    /* 使用渐变绘制板上的线条 */
+    background: repeating-linear-gradient(
+        to bottom,
+        transparent,
+        transparent 3px,
+        currentColor 3px,
+        currentColor 4px
+    );
+    background-position: 0 5px;
+    background-size: 100% 12px;
+    background-repeat: no-repeat;
+}
+
+.copy-btn::after {
+    /* 剪贴板夹子 */
+    width: 8px;
+    height: 4px;
+    border: 2px solid currentColor;
+    border-top: none;
+    border-radius: 0 0 2px 2px;
+    background-color: #333; /* 遮挡板身线条 */
+    left: 15px;
+    top: 8px;
+}
+
+.copy-btn:hover::after {
+     background-color: #444; /* hover 时保持遮挡颜色一致 */
+}
+
+/* 已复制状态：对勾图标 (✅) */
+.copy-btn.copied {
+    background-color: rgba(74, 222, 128, 0.1);
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+
+.copy-btn.copied::before {
+    /* 将剪贴板变形为对勾 */
+    width: 6px;
+    height: 12px;
+    border: solid currentColor;
+    border-width: 0 2px 2px 0;
+    transform: translateY(-65%) rotate(45deg);
+    background: none;
+    border-radius: 0;
+    left: 16px;
+    top: 50%;
+}
+
+.copy-btn.copied::after {
+    /* 隐藏夹子部分 */
+    opacity: 0;
+    transform: translateY(-10px);
+}
+/* ---------------------------------- */
+
+
+/* --- 状态信息图标 (🔍, ✅, ❌) --- */
+.status-msg {
+    margin-top: 15px;
+    font-size: 0.95rem;
+    color: #888;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: color 0.3s;
+}
+
+/* 有图标时的布局调整 */
+.status-msg.error,
+.status-msg.success,
+.status-msg.searching {
+    padding-left: 28px; /* 留出图标空间 */
+    justify-content: flex-start;
+    display: inline-flex;
+}
+
+/* 图标通用绝对定位和过渡 */
+.status-msg::before,
+.status-msg::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    opacity: 0; /* 默认隐藏 */
+    transition: all 0.3s ease;
+}
+
+/* ❌ 错误图标 (叉号) */
+.status-msg.error { color: var(--error-color); }
+.status-msg.error::before {
+    opacity: 1;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    /* 使用线性渐变绘制叉号 */
+    background:
+        linear-gradient(45deg, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%),
+        linear-gradient(-45deg, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%);
+}
+
+/* ✅ 成功图标 (对勾) */
+.status-msg.success { color: var(--success-color); }
+.status-msg.success::before {
+    opacity: 1;
+    top: 50%;
+    left: 4px;
+    width: 6px;
+    height: 12px;
+    border: solid currentColor;
+    border-width: 0 2px 2px 0;
+    transform: translateY(-65%) rotate(45deg);
+}
+
+/* 🔍 查询中图标 (放大镜) */
+.status-msg.searching { color: #aaa; }
+.status-msg.searching::before { /* 镜片圆圈 */
+    opacity: 1;
+    top: 50%;
+    transform: translateY(-65%);
+    width: 10px;
+    height: 10px;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+}
+.status-msg.searching::after { /* 手柄 */
+    opacity: 1;
+    top: 50%;
+    left: 11px;
+    width: 6px;
+    height: 2px;
+    background-color: currentColor;
+    transform: translateY(3px) rotate(45deg);
+}
+/* ---------------------------------- */
