@@ -5,10 +5,18 @@ let refreshTimer = null;
 
 // 暗黑模式初始化
 const toggle = document.getElementById('darkModeToggle');
-if (localStorage.getItem('darkMode') === 'enabled') { document.body.classList.add('dark-mode'); toggle.checked = true; }
+if (localStorage.getItem('darkMode') === 'enabled') {
+    document.body.classList.add('dark-mode');
+    toggle.checked = true;
+}
 toggle.addEventListener('change', () => {
-    if (toggle.checked) { document.body.classList.add('dark-mode'); localStorage.setItem('darkMode', 'enabled'); }
-    else { document.body.classList.remove('dark-mode'); localStorage.setItem('darkMode', 'disabled'); }
+    if (toggle.checked) {
+        document.body.classList.add('dark-mode');
+        localStorage.setItem('darkMode', 'enabled');
+    } else {
+        document.body.classList.remove('dark-mode');
+        localStorage.setItem('darkMode', 'disabled');
+    }
 });
 
 // === 弹窗管理 ===
@@ -28,7 +36,8 @@ async function openSettingsModal() {
         document.getElementById('dbUser').value = config.user;
         document.getElementById('dbPass').value = config.password;
         document.getElementById('dbName').value = config.database;
-    } catch(e) {}
+    } catch (e) {
+    }
 }
 
 function closeSettingsModal() {
@@ -56,13 +65,15 @@ async function saveAllSettings() {
             body: JSON.stringify(getDBForm())
         });
         const r = await res.json();
-        if(r.success) {
+        if (r.success) {
             alert("✅ 所有配置保存成功！");
             closeSettingsModal();
         } else {
             alert("⚠️ 数据库连接失败：" + r.msg);
         }
-    } catch(e) { alert("保存请求失败"); }
+    } catch (e) {
+        alert("保存请求失败");
+    }
 }
 
 function getDBForm() {
@@ -84,7 +95,9 @@ async function testDBConnection() {
         });
         const r = await res.json();
         alert(r.msg);
-    } catch(e) { alert("测试请求失败"); }
+    } catch (e) {
+        alert("测试请求失败");
+    }
 }
 
 // === 定时器管理 ===
@@ -96,24 +109,32 @@ function restartTimer() {
 
 // === 卡片渲染 ===
 function createCardHTML(room) {
+    // 修改点：
+    // 1. 增加 card-content 容器
+    // 2. CSV 按钮增加 "CSV" 文字
     return `
-        <div class="card-header">
-            <div class="info-box">
-                <span class="anchor-name" title="${room.title}">${room.name}</span>
-                <span class="room-id">ID: ${room.room_id}</span>
+        <button class="btn-close-card" onclick="control('${room.room_id}', 'remove')" title="删除卡片">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="card-content">
+            <div class="card-header">
+                <div class="info-box">
+                    <span class="anchor-name" title="${room.title}">${room.name}</span>
+                    <span class="room-id">ID: ${room.room_id}</span>
+                </div>
+                <div class="status-badge">
+                    <span class="status-dot"></span>
+                    <span class="status-text">...</span>
+                </div>
             </div>
-            <div class="status-badge">
-                <span class="status-dot"></span>
-                <span class="status-text">...</span>
-            </div>
+            <div class="log-area" data-last-log="${room.latest_log || ''}"></div>
         </div>
-        <div class="log-area" data-last-log="${room.latest_log || ''}"></div>
         <div class="card-actions">
             <button class="btn-action btn-start" onclick="control('${room.room_id}', 'start')"><i class="fas fa-play"></i> 启动</button>
             <button class="btn-action btn-stop" onclick="control('${room.room_id}', 'stop')"><i class="fas fa-pause"></i> 暂停</button>
-            <button class="btn-download" onclick="downloadData('${room.room_id}')" title="导出CSV"><i class="fas fa-file-csv"></i></button>
-            <a href="${room.page_url}" target="_blank" class="btn-link" title="跳转直播间">直达 <i class="fas fa-external-link-alt"></i></a>
-            <button class="btn-del" onclick="control('${room.room_id}', 'remove')" title="删除"><i class="fas fa-trash-alt"></i></button>
+            <button class="btn-download" onclick="downloadData('${room.room_id}')" title="导出CSV"><i class="fas fa-file-csv"></i> CSV</button>            
+            <a href="${room.page_url}" target="_blank" class="btn-link" title="跳转直播间"><i class="fas fa-external-link-alt"></i> 直达</a>            
+            <button class="btn-copy" data-url="${room.page_url}" title="复制链接"><i class="fas fa-copy"></i> 复制</button>
         </div>
     `;
 }
@@ -149,7 +170,9 @@ async function refreshList() {
         container.querySelectorAll('.card').forEach(el => {
             if (!newDataIds.has(el.dataset.roomId)) el.remove();
         });
-    } catch(e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 function updateCardUI(card, room) {
@@ -189,8 +212,11 @@ function updateCardUI(card, room) {
     const lastLog = logArea.dataset.lastLog;
     const newLog = room.latest_log;
     if (newLog && newLog !== lastLog && !newLog.includes('等待数据')) {
-        const item = document.createElement('div'); item.className = 'log-item'; item.innerText = newLog;
-        logArea.appendChild(item); logArea.dataset.lastLog = newLog;
+        const item = document.createElement('div');
+        item.className = 'log-item';
+        item.innerText = newLog;
+        logArea.appendChild(item);
+        logArea.dataset.lastLog = newLog;
         if (logArea.children.length > 50) logArea.removeChild(logArea.firstElementChild);
         logArea.scrollTop = logArea.scrollHeight;
     } else if (!logArea.children.length && newLog) {
@@ -200,14 +226,27 @@ function updateCardUI(card, room) {
 
 async function addRoom() {
     const input = document.getElementById('configInput');
-    if(!input.value.trim()) return alert("空");
+    if (!input.value.trim()) return alert("空");
     try {
-        await fetch(API_URL + "/api/add", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({config: input.value.trim()}) });
-        input.value = ""; refreshList();
-    } catch(e) {}
+        await fetch(API_URL + "/api/add", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({config: input.value.trim()})
+        });
+        input.value = "";
+        refreshList();
+    } catch (e) {
+    }
 }
-async function control(id, act) { await fetch(API_URL + `/api/${act}/${id}`, { method: "POST" }); refreshList(); }
-function downloadData(id) { window.open(API_URL + '/api/download/' + id); }
+
+async function control(id, act) {
+    await fetch(API_URL + `/api/${act}/${id}`, {method: "POST"});
+    refreshList();
+}
+
+function downloadData(id) {
+    window.open(API_URL + '/api/download/' + id);
+}
 
 // === 新增：一键启动逻辑 ===
 async function startAllRooms() {
@@ -249,6 +288,74 @@ async function startAllRooms() {
     } else {
         alert("所有任务似乎都已经在运行中了。");
     }
+}
+
+// === 新增：点击直达链接自动复制并提示 ===
+/**
+ * 功能：拦截列表中的链接点击
+ * 1. 阻止默认直接跳转
+ * 2. 复制链接到剪贴板
+ * 3. 弹出提示
+ * 4. 延迟后在新标签页打开链接 (确保复制完成)
+ */
+// === 新增：监听独立复制按钮点击 ===
+document.getElementById('roomList').addEventListener('click', function (e) {
+    // 1. 检查是否点击了复制按钮
+    // 修改点：因为关闭按钮也在 roomList 里，确保不冲突，这里仅针对 btn-copy
+    const btn = e.target.closest('.btn-copy');
+
+    if (btn) {
+        const url = btn.dataset.url;
+
+        // 执行复制逻辑
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(url).then(() => {
+                showCopyToast('📋 链接已复制');
+            }).catch(() => {
+                fallbackCopyTextToClipboard(url);
+            });
+        } else {
+            fallbackCopyTextToClipboard(url);
+        }
+    }
+});
+
+// 辅助函数：兼容性复制（保持原样，确保一定要有这个函数）
+function fallbackCopyTextToClipboard(text) {
+    var textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    textArea.style.top = "0";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+        var successful = document.execCommand('copy');
+        if (successful) showCopyToast('📋 链接已复制');
+        else showCopyToast('❌ 复制失败');
+    } catch (err) {
+        showCopyToast('❌ 无法访问剪贴板');
+    }
+    document.body.removeChild(textArea);
+}
+
+// 显示提示框函数
+function showCopyToast(msg) {
+    const toast = document.getElementById('toast-notification');
+    if (!toast) return;
+
+    const span = toast.querySelector('span');
+    if (span) span.textContent = msg;
+
+    toast.classList.add('show');
+
+    // 清除之前的定时器（如果有）防止闪烁
+    if (window.toastTimeout) clearTimeout(window.toastTimeout);
+
+    window.toastTimeout = setTimeout(() => {
+        toast.classList.remove('show');
+    }, 2000);
 }
 
 // 启动

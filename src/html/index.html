@@ -6,6 +6,38 @@
     <title>抖音直播监控台 v5.3</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* 新增：提示框样式 */
+        .toast-notification {
+            visibility: hidden;
+            min-width: 220px;
+            background-color: rgba(45, 52, 54, 0.95);
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 12px 16px;
+            position: fixed;
+            z-index: 9999;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.15);
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s, bottom 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .toast-notification.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 50px;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -17,6 +49,10 @@
             </div>
 
             <div class="header-controls">
+                <a href="http://127.0.0.1:8000/monitor" target="_blank" class="btn-monitor" title="跳转转链网站">
+                    <i class="fas fa-desktop"></i> 解析直播流
+                </a>
+
                 <button class="btn-global-start" onclick="startAllRooms()" title="启动当前列表所有任务">
                     <i class="fas fa-rocket"></i> 一键启动
                 </button>
@@ -69,6 +105,11 @@
                 <button class="btn-save" onclick="saveAllSettings()">保存全部</button>
             </div>
         </div>
+    </div>
+
+    <div id="toast-notification" class="toast-notification">
+        <i class="fas fa-check-circle" style="color: #55efc4;"></i>
+        <span>直播间地址已复制</span>
     </div>
 
     <script src="script.js"></script>

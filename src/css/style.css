@@ -12,6 +12,7 @@
     --log-bg: #2d3436;
     --log-text: #f1f2f6;
     --accent-color: #3498db;
+    --success-color: #28a745;
 }
 
 body.dark-mode {
@@ -81,18 +82,23 @@ button { padding: 8px 20px; border: none; border-radius: 8px; cursor: pointer; f
 /* === 卡片样式 === */
 .card {
     background: var(--card-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    border: 1px solid var(--border-color); border-radius: 12px; padding: 15px;
+    border: 1px solid var(--border-color); border-radius: 12px;
+    /* padding: 15px;  修改：移除内边距，让底部按钮贴合或自定义 */
+    padding: 0;
     box-shadow: var(--shadow-sm); transition: transform 0.3s, box-shadow 0.3s;
     position: relative; overflow: hidden; height: 320px; display: flex; flex-direction: column;
 }
 .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--accent-color); z-index: 10; }
+
+/* 卡片内容容器 (新增，用于控制padding) */
+.card-content { padding: 15px 15px 0 15px; display: flex; flex-direction: column; flex: 1; overflow: hidden; }
 
 /* 🔴 红色：手动暂停 */
 .card-stopped { background-color: rgba(255, 235, 238, 0.9) !important; border-color: #ff7675 !important; }
 body.dark-mode .card-stopped { background-color: rgba(60, 20, 20, 0.8) !important; border-color: #c0392b !important; }
 .card-stopped .anchor-name { color: #c0392b !important; text-decoration: line-through; opacity: 0.8; }
 
-/* ⚫ 灰色：直播结束 - 强化视觉 */
+/* ⚫ 灰色：直播结束 */
 .card-ended {
     background-color: rgba(220, 220, 220, 0.98) !important;
     border-color: #95a5a6 !important;
@@ -119,7 +125,7 @@ body.dark-mode .card-ended { background-color: rgba(20, 20, 20, 0.95) !important
 }
 body.dark-mode .card-ended::after { color: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.25); }
 
-.card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 8px; flex-shrink: 0; }
+.card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 8px; flex-shrink: 0; padding-right: 25px; }
 .info-box { flex: 1; min-width: 0; padding-right: 10px; }
 .anchor-name { font-weight: 700; font-size: 16px; color: var(--text-primary); display: block; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .room-id { font-size: 12px; color: var(--text-secondary); display: block; font-family: monospace; letter-spacing: 0.5px; }
@@ -135,32 +141,75 @@ body.dark-mode .ended { color: #bdc3c7; background: rgba(255, 255, 255, 0.1); bo
 .stopped .status-dot { background: #ff7675; }
 .ended .status-dot { background: #636e72; }
 
-.log-area { background: var(--log-bg); color: var(--log-text); padding: 10px; border-radius: 8px; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; flex: 1; overflow-y: auto; margin-bottom: 12px; line-height: 1.5; word-break: break-all; position: relative; border: 1px solid rgba(0,0,0,0.1); }
+.log-area { background: var(--log-bg); color: var(--log-text); padding: 10px; border-radius: 8px; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; flex: 1; overflow-y: auto; margin-bottom: 15px; line-height: 1.5; word-break: break-all; position: relative; border: 1px solid rgba(0,0,0,0.1); }
 .log-area::-webkit-scrollbar { width: 6px; }
 .log-area::-webkit-scrollbar-thumb { background: #636e72; border-radius: 3px; }
 .log-item { display: block; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 3px 0; }
 
-.card-actions { display: flex; gap: 8px; flex-shrink: 0; }
-.btn-action { flex: 1; font-size: 12px; padding: 8px; color: white; border-radius: 6px; display: none; }
-.btn-start { background: linear-gradient(135deg, #3498db, #2980b9); }
-.btn-stop { background: linear-gradient(135deg, #e67e22, #d35400); }
-.btn-download { background: #2ecc71; color: white; border: none; }
-
-/* 🌟 核心修改：直达按钮增大 */
-.btn-link {
-    background: #636e72; color: white;
-    padding: 8px 16px; /* 增大内边距 */
-    font-size: 13px; font-weight: bold;
-    min-width: 70px;
-    border: none;
+/* === 🌟 底部按钮优化区域 === */
+.card-actions {
+    display: flex;
+    gap: 8px; /* 按钮间距 */
+    padding: 12px; /* 底部内边距 */
+    background: rgba(0,0,0,0.03); /* 轻微背景色区分 */
+    border-top: 1px solid rgba(0,0,0,0.05);
+    margin-top: auto; /* 确保推到底部 */
 }
-.btn-del { background: transparent; color: #e74c3c; border: 1px solid #e74c3c; width: 32px; font-size: 14px; padding: 0; }
-body.dark-mode .btn-del { color: #ff7675; border-color: #ff7675; }
 
-.btn-link, .btn-download, .btn-del { border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
-.btn-link:hover, .btn-download:hover { transform: translateY(-2px); filter: brightness(1.1); }
+/* 统一所有底部按钮的基本样式 */
+.card-actions button,
+.card-actions a.btn-link {
+    flex: 1; /* ✨ 关键：所有按钮等宽 */
+    height: 36px; /* ✨ 统一高度 */
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: none;
+    color: white;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    padding: 0 8px; /* 防止文字过长 */
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
 
-/* 配置弹窗 */
+/* 悬停效果 */
+.card-actions button:hover,
+.card-actions a.btn-link:hover {
+    transform: translateY(-2px);
+    opacity: 0.9;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* 按钮点击效果 */
+.card-actions button:active,
+.card-actions a.btn-link:active {
+    transform: translateY(0);
+}
+
+/* --- 各个按钮的颜色 --- */
+
+/* 启动 (蓝色) */
+.btn-start { background-color: #3498db; }
+/* 暂停 (橙色) */
+.btn-stop { background-color: #e67e22; display: none; } /* JS控制显示 */
+
+/* CSV导出 (绿色) */
+.btn-download { background-color: #27ae60; }
+
+/* 直达 (深灰蓝) - 之前是透明的，现在改成实色按钮更显眼 */
+.btn-link { background-color: #57606f; }
+
+/* 复制 (紫色) */
+.btn-copy { background-color: #9b59b6; }
+
+
+/* --- 系统弹窗和全局组件 --- */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 1000; }
 .modal-overlay.open { display: flex; }
 .modal { background: var(--card-bg); width: 450px; padding: 25px; border-radius: 16px; box-shadow: var(--shadow-md); border: 1px solid var(--border-color); }
@@ -184,41 +233,92 @@ body.dark-mode .btn-del { color: #ff7675; border-color: #ff7675; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .card { animation: fadeIn 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
 
+/* 顶部按钮 */
+.btn-monitor {
+    background-color: #6c5ce7;
+    color: white;
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-right: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: none;
+}
+.btn-monitor:hover { opacity: 0.9; transform: translateY(-1px); color: white; }
 
-/* 新增的一键启动按钮样式 */
 .btn-global-start {
-    background-color: var(--success-color, #28a745); /* 使用定义好的绿色，或者默认绿色 */
+    background-color: var(--success-color, #28a745);
     color: white;
     border: none;
     padding: 6px 14px;
     border-radius: 6px;
     cursor: pointer;
-    margin-right: 15px; /* 与设置图标隔开距离 */
+    margin-right: 15px;
     font-size: 13px;
     font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 6px; /* 图标和文字的间距 */
+    gap: 6px;
     transition: all 0.2s ease;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+.btn-global-start:hover { opacity: 0.9; transform: translateY(-1px); }
 
-.btn-global-start:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+/* 卡片关闭按钮 */
+.btn-close-card {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: transparent;
+    border: none;
+    color: #95a5a6;
+    font-size: 14px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    z-index: 20;
+    padding: 0;
 }
+.btn-close-card:hover { background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; transform: scale(1.1); }
 
-.btn-global-start:active {
-    transform: translateY(0);
-}
-
-/* 移动端适配：屏幕太小时只显示图标 */
 @media (max-width: 600px) {
-    .btn-global-start {
-        padding: 6px 10px;
-    }
-    .btn-global-start span { /* 如果你想在移动端隐藏文字 */
-        display: none;
-    }
+    .btn-global-start, .btn-monitor { padding: 6px 10px; }
+    .btn-global-start span, .btn-monitor span { display: none; }
 }
+
+.toast-notification {
+    visibility: hidden;
+    min-width: 220px;
+    background-color: rgba(45, 52, 54, 0.95);
+    color: #fff;
+    text-align: center;
+    border-radius: 8px;
+    padding: 12px 16px;
+    position: fixed;
+    z-index: 9999;
+    left: 50%;
+    bottom: 30px;
+    transform: translateX(-50%);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.15);
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.3s, bottom 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.toast-notification.show { visibility: visible; opacity: 1; bottom: 50px; }
