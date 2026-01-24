@@ -214,6 +214,42 @@ class DouyinRecorder:
 
         return None
 
+
+    def get_room_status(self):
+        self.get_ttwid()
+        real_room_id, web_rid = self.get_room_id()
+        if not real_room_id:
+            return None
+
+
+        api_url = "https://live.douyin.com/webcast/room/web/enter/"
+        params = {
+            "aid": "6383",
+            "device_platform": "web",
+            "browser_language": "zh-CN",
+            "browser_platform": "Linux x86_64",
+            "browser_name": "Chrome",
+            "browser_version": "142.0.0.0",
+            "web_rid": web_rid,
+            "room_id_str": real_room_id,
+        }
+
+        resp = self.session.get(api_url, params=params, timeout=5)
+        print(resp.text)
+        try:
+            data = resp.json()
+            print(data["data"]["room_status"])
+        except:
+            print(f"❌ API 返回非 JSON 数据: {resp.text[:50]}")
+            return None
+
+        if not data.get("data"):
+            print("❌ API 返回 data 为空 (可能是 Cookie 过期)")
+            return None
+
+
+
+
     def get_stream_url(self):
         if not self.js_ctx:
             print("❌ JS 环境未就绪，无法进行签名")

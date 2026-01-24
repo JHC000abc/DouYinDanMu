@@ -3,9 +3,8 @@
 """
 @author: JHC000abc@gmail.com
 @file: utils_dm.py
-@time: 2026/1/23 14:20 
-@desc: 
-
+@time: 2026/1/24 15:30
+@desc: 包含流地址解析、直播间信息查询及 WebSocket 弹幕监控逻辑 (已优化复用 utils_zb)
 """
 import threading
 import websocket
@@ -14,318 +13,118 @@ import time
 import urllib.request
 import requests
 import re
-import shutil
-from urllib.parse import urlencode
+import json
+import os
 from datetime import datetime
 from models.models_dm import LiveDanmakuModel
 from utils.utils_db import *
-
-
-os.environ["EXECJS_RUNTIME"] = "Node"
-
-try:
-    import execjs
-    import execjs.runtime_names
-except ImportError:
-    print("❌ 错误: 未安装 PyExecJS 库。请运行: pip install PyExecJS")
-    pass
+from utils.utils_zb import DouyinRecorder  # 引入 utils_zb 进行复用
 
 # ⚠️ 确保 dy_pb2.py 在同一目录下
 try:
     from plugins import dy_pb2
 except ImportError:
     print("❌ 错误: 未找到 dy_pb2.py，请确保该文件在同一目录下。")
-    # exit(1) # 避免直接退出，允许仅运行流服务
-
 
 ROOMS_CONFIG_FILE = "config/rooms.json"
 
 
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-
-STREAM_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-JS_FILE_PATH = "src/js/crypto.js"  # 默认值
-
-
 class DouyinStreamFetcher:
     """
-    基于 Requests + PyExecJS 的高级流解析器
-    代码逻辑已与 main2.py 完全对齐 (使用 DouyinRecorder 的逻辑)
+    基于 utils_zb.DouyinRecorder 的封装类
+    用于适配 utils_dm 原有的业务逻辑，同时复用底层解析能力
     """
 
-    def __init__(self, room_id, custom_headers=None):
-        self.room_id = room_id
-        # 初始 URL
-        self.room_url = f"https://live.douyin.com/{room_id}"
+    def __init__(self, page_url, custom_headers=None):
+        self.room_url = page_url
+        # 核心：直接实例化 Recorder，复用其 JS 环境和 Session 管理
+        self.recorder = DouyinRecorder(self.room_url)
 
-        self.session = requests.Session()
-        # ⚠️ 强制使用 main2.py 中验证通过的 Windows UA
-        self.session.headers.update({
-            "User-Agent": STREAM_USER_AGENT,
-            "Referer": "https://live.douyin.com/",
-        })
-
-        # 注入用户配置的 Headers (如 Cookie)，但严格过滤 User-Agent
+        # 注入用户配置的 Headers (如 Cookie)，同步给 recorder 的 session
         if custom_headers and isinstance(custom_headers, dict):
             safe_headers = {
                 k: v for k, v in custom_headers.items()
                 if k.lower() not in ['host', 'user-agent']
             }
-            self.session.headers.update(safe_headers)
-
-        self.js_ctx = self._load_js_environment()
-
-    def _load_js_environment(self):
-        """
-        加载并配置 JS 运行环境 (含浏览器环境模拟)
-        完全复刻 main2.py 的逻辑
-        """
-        if not os.path.exists(JS_FILE_PATH):
-            print(f"❌ 严重错误: 找不到 {JS_FILE_PATH} 文件，无法进行签名！")
-            return None
-
-        # 检查 Node.js
-        node_path = shutil.which("node") or shutil.which("nodejs")
-        if not node_path:
-            print("❌ 严重错误: 系统未检测到 Node.js 环境！")
-            return None
-
-        # 显式设置 node 路径
-        os.environ["EXECJS_COMMAND"] = node_path
-
-        try:
-            with open(JS_FILE_PATH, 'r', encoding='utf-8') as f:
-                raw_js = f.read()
-
-            # 1. 移除 null 定义 (Patch) - 关键步骤，防止 Mock 被覆盖
-            cleaned_js = raw_js.replace("var window = null;", "// var window = null; (Patch)")
-            cleaned_js = cleaned_js.replace("global.window = null;", "// global.window = null;")
-
-            # 2. 注入浏览器环境 (Mock) - 使用 STREAM_USER_AGENT 常量
-            browser_mock = """
-            global.window = {
-                params: {},
-                addEventListener: function() {},
-                navigator: {
-                    userAgent: "%s",
-                    appCodeName: "Mozilla",
-                    appName: "Netscape",
-                    platform: "Win32"
-                },
-                document: {
-                    referrer: "https://live.douyin.com/",
-                    cookie: "",
-                    getElementById: function() { return null; },
-                    addEventListener: function() {}
-                },
-                location: {
-                    href: "https://live.douyin.com/",
-                    protocol: "https:",
-                    hostname: "live.douyin.com"
-                },
-                screen: { width: 1920, height: 1080 }
-            };
-            global.document = global.window.document;
-            global.navigator = global.window.navigator;
-            global.location = global.window.location;
-            """ % STREAM_USER_AGENT
-
-            # 3. 注入适配器 - 使用 verified working 的版本
-            adapter_code = """
-            ;
-            function generate_signature(params_string) {
-                try {
-                    if (typeof window !== 'undefined' && window.byted_acrawler && window.byted_acrawler.sign) {
-                        return window.byted_acrawler.sign({url: params_string});
-                    }
-                    if (typeof global !== 'undefined' && global.byted_acrawler && global.byted_acrawler.sign) {
-                        return global.byted_acrawler.sign({url: params_string});
-                    }
-                    if (typeof sign === 'function') {
-                        return sign(params_string, "%s");
-                    }
-                } catch (e) {
-                    return "err: " + e.toString();
-                }
-                return "";
-            }
-            """
-
-            full_code = browser_mock + "\n" + cleaned_js + "\n" + adapter_code
-            return execjs.compile(full_code)
-
-        except Exception as e:
-            print(f"❌ JS 编译失败: {e}")
-            return None
-
-    def get_ttwid(self):
-        """获取 ttwid，这对签名至关重要"""
-        try:
-            # 优先检查 session 是否已有 ttwid (可能是从 rooms.json 注入的)
-            if "ttwid" in self.session.cookies:
-                return self.session.cookies.get("ttwid")
-
-            # 否则发起请求获取 fresh one
-            self.session.get("https://live.douyin.com/", timeout=10)
-            ttwid = self.session.cookies.get("ttwid")
-            if ttwid:
-                print(f"✅ 获取到新 ttwid: {ttwid[:10]}...")
-            return ttwid
-        except:
-            return None
-
-    def get_room_id(self):
-        """获取真实 Room ID (处理重定向)"""
-        try:
-            # 兼容：如果已经是纯数字，且看起来像 room_id，直接使用
-            print(f"🔄 正在解析 Room ID: {self.room_id}")
-
-            # 使用 session 请求，带上正确的 UA
-            response = self.session.get(self.room_url, allow_redirects=True, timeout=10)
-            final_url = response.url
-
-            web_rid_match = re.search(r'live\.douyin\.com/(\d+)', final_url)
-            if not web_rid_match:
-                web_rid_match = re.search(r'reflow/(\d+)', final_url)
-
-            if not web_rid_match:
-                path_match = re.search(r'/(\d+)', final_url.split('?')[0])
-                web_rid = path_match.group(1) if path_match else self.room_id
-            else:
-                web_rid = web_rid_match.group(1)
-
-            # 尝试从页面内容提取 roomId
-            patterns = [
-                r'\\"roomId\\":\\"(\d+)\\"',
-                r'"roomId"\s*:\s*"(\d+)"',
-                r'room_id=(\d+)',
-                r'data-room-id="(\d+)"'
-            ]
-
-            real_room_id = web_rid  # 默认回退
-            for pattern in patterns:
-                match = re.search(pattern, response.text)
-                if match:
-                    real_room_id = match.group(1)
-                    break
-
-            return real_room_id, web_rid
-
-        except Exception as e:
-            print(f"⚠️ 解析 ID 失败: {e}，将尝试使用原 ID")
-            return self.room_id, self.room_id
-
-    def _extract_url_from_data(self, stream_data):
-        """辅助函数：健壮地提取流地址，兼容 Dict/List/Str"""
-        if not stream_data: return None
-
-        # 1. 优先尝试 FLV
-        flv_data = stream_data.get('flv_pull_url')
-        if flv_data:
-            if isinstance(flv_data, dict):
-                return flv_data.get('FULL_HD1') or flv_data.get('HD1') or flv_data.get('SD1') or \
-                    list(flv_data.values())[0]
-            elif isinstance(flv_data, list) and len(flv_data) > 0:
-                return flv_data[0]
-            elif isinstance(flv_data, str):
-                return flv_data
-
-        # 2. 其次尝试 HLS
-        hls_data = stream_data.get('hls_pull_url_map') or stream_data.get('hls_pull_url')
-        if hls_data:
-            if isinstance(hls_data, dict):
-                return hls_data.get('FULL_HD1') or hls_data.get('HD1') or hls_data.get('SD1') or \
-                    list(hls_data.values())[0]
-            elif isinstance(hls_data, list) and len(hls_data) > 0:
-                return hls_data[0]
-            elif isinstance(hls_data, str):
-                return hls_data
-        return None
+            self.recorder.session.headers.update(safe_headers)
 
     def get_flv_url(self):
-        """执行完整的获取流程"""
-        # 1. 预备环境
-        self.get_ttwid()
-        real_room_id, web_rid = self.get_room_id()
+        """
+        获取直播流地址
+        直接调用 DouyinRecorder 的逻辑 (含签名生成)
+        """
+        return self.recorder.get_stream_url()
 
+    def get_room_info(self):
+        """
+        获取直播间详细状态状态 (在线人数、标题等)
+        此逻辑保留在 dm 中，因为 zb 主要关注流地址
+        """
+        # 1. 复用 recorder 获取 ttwid
+        ttwid = self.recorder.get_ttwid()
+
+        # 2. 复用 recorder 获取真实 ID (含重定向处理)
+        real_room_id, web_rid = self.recorder.get_room_id()
+        print(real_room_id, web_rid)
         if not real_room_id:
-            print("❌ 无法获取有效的 Room ID")
-            return None
+            return {"error": "无法解析 Room ID", "status": -1}
 
-        # 2. 构造参数
+        # 3. 构造请求参数 (沿用 recorder 的 session)
+        url = "https://live.douyin.com/webcast/room/web/enter/"
+
         params = {
             "aid": "6383",
-            "app_name": "douyin_web",
             "device_platform": "web",
             "browser_language": "zh-CN",
-            "cookie_enabled": "true",
-            "screen_width": "1920",
-            "screen_height": "1080",
-            "browser_online": "true",
-            "room_id": real_room_id,
+            "browser_platform": "Linux x86_64",
+            "browser_name": "Chrome",
+            "browser_version": "142.0.0.0",
             "web_rid": web_rid,
+            "room_id_str": real_room_id,
         }
-
-        query_string = urlencode(params)
-
-        # 3. 计算签名
-        x_bogus = ""
-        if self.js_ctx:
-            print("⏳ 正在计算 X-Bogus 签名...")
-            try:
-                x_bogus = self.js_ctx.call("generate_signature", query_string)
-                print(f"✅ 生成签名: {x_bogus}")
-            except Exception as e:
-                print(f"❌ 签名生成异常: {e}")
-        else:
-            print("⚠️ JS 环境未就绪，尝试无签名请求（极可能失败）")
-
-        if x_bogus and "err" not in x_bogus:
-            params['X-Bogus'] = x_bogus
-
-        # 4. 请求 API
-        api_url = "https://live.douyin.com/webcast/room/web/enter/"
+        cookies = {"ttwid": ttwid}
+        headers = {"headers": self.recorder.session.headers.get("User-Agent")}
         try:
-            # 这里的 self.session 已经使用了正确的 UA
-            resp = self.session.get(api_url, params=params, timeout=5)
+            # 使用 recorder 的 session 发送请求，确保 Cookie/Header 一致
+            response = requests.get(url, params=params, headers=headers, cookies=cookies, timeout=5)
+            try:
+                json_data = response.json()
+            except json.JSONDecodeError:
+                return {"error": "API 返回非 JSON 数据", "raw": response.text[:100], "status": -1}
 
-            # 调试：检查是否返回了 HTML 报错页面
-            if not resp.text.strip().startswith("{"):
-                print(f"❌ API 返回了非 JSON 数据 (可能是 403/验证码): {resp.text[:100]}...")
-                return None
+            # 解析返回数据
+            data_wrapper = json_data.get("data", {})
+            data_list = data_wrapper.get("data", [])
 
-            data = resp.json()
+            result = {
+                "room_id": real_room_id,
+                "web_rid": web_rid
+            }
 
-            # 深入两层获取数据 (兼容性处理)
-            room_payload = data.get('data', {}).get('data')
-            if isinstance(room_payload, list) and len(room_payload) > 0:
-                room_payload = room_payload[0]
-            elif isinstance(data.get('data'), dict):
-                room_payload = data.get('data')
+            if data_list and len(data_list) > 0:
+                room_info = data_list[0]
+                user_info = data_wrapper.get("user", {})
 
-            if not room_payload:
-                print(f"❌ API 返回空数据: {data}")
-                return None
+                result.update({
+                    "status": room_info.get("status"),  # 2=直播中, 4=关播/结束
+                    "status_str": room_info.get("status_str"),
+                    "title": room_info.get("title"),
+                    "user_count": room_info.get("user_count_str"),
+                    "owner_nickname": user_info.get("nickname"),
+                    "owner_avatar": user_info.get("avatar_thumb", {}).get("url_list", [""])[0],
+                    "live_room_mode": room_info.get("live_room_mode"),
+                })
+            else:
+                result["status"] = 4
+                result["msg"] = "未找到直播间数据"
 
-            stream_data = room_payload.get('stream_url')
-            if not stream_data:
-                status = room_payload.get('status')
-                print(f"❌ 直播间可能未开播 (Status: {status})")
-                return None
-
-            # 5. 提取最终地址
-            target_url = self._extract_url_from_data(stream_data)
-            if target_url:
-                # 强制替换 https 以避免 SSL 握手问题
-                return target_url.replace("https://", "http://")
-            return None
+            return result
 
         except Exception as e:
-            print(f"❌ [解析流] 请求异常: {e}")
-            return None
+            return {"error": f"请求异常: {str(e)}", "status": -1}
 
 
-# ================= 业务逻辑：弹幕监控 (保持原样) =================
+# ================= 业务逻辑：弹幕监控 =================
 
 class RoomManager:
     def __init__(self):
@@ -337,7 +136,6 @@ class RoomManager:
     def load_rooms(self):
         if not os.path.exists(self.config_file): return
         try:
-            # 确保目录存在
             os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
             with open(self.config_file, 'r', encoding='utf-8') as f:
                 saved_rooms = json.load(f)
@@ -359,8 +157,6 @@ class RoomManager:
                         "ws": None,
                         "logs": []
                     }
-                    # 默认不自动启动，或者根据需求开启
-                    # self.start_room(room_id)
         except Exception as e:
             print(f"❌ 读取配置失败: {e}")
 
@@ -376,7 +172,6 @@ class RoomManager:
                         "page_url": r.get("page_url", "")
                     }
 
-            # 确保目录存在
             os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(data_to_save, f, ensure_ascii=False, indent=2)
@@ -402,7 +197,6 @@ class RoomManager:
 
             with self.lock:
                 if room_id in self.rooms:
-                    # 如果已存在，更新配置（允许更新 Cookie）
                     self.rooms[room_id]["config"] = config
                     self.rooms[room_id]["name"] = anchor_name
                     self.save_rooms()
@@ -474,7 +268,6 @@ class RoomManager:
         return res
 
     def get_room_config(self, room_id):
-        """辅助函数：获取房间配置（用于流解析提取 Cookie）"""
         with self.lock:
             if room_id in self.rooms:
                 return self.rooms[room_id].get("config")
@@ -484,7 +277,7 @@ class RoomManager:
         if room_id in self.rooms:
             log_entry = f"[{datetime.now().strftime('%H:%M:%S')}] {user}: {msg}"
             self.rooms[room_id]["logs"].append(log_entry)
-            if len(self.rooms[room_id]["logs"]) > 50:  # 保留最近50条
+            if len(self.rooms[room_id]["logs"]) > 50:
                 self.rooms[room_id]["logs"].pop(0)
             print(f"[房{room_id}] {log_entry}")
 
@@ -528,6 +321,26 @@ class RoomManager:
                 with self.lock:
                     if self.rooms.get(room_id, {}).get("status") != "running": break
 
+                # === 检查直播间状态 (复用 Fetcher -> Recorder) ===
+                try:
+                    # 这里的 Fetcher 现在内部使用 DouyinRecorder
+
+                    fetcher = DouyinStreamFetcher(self.rooms[room_id]["page_url"], config.get('headers'))
+                    room_info = fetcher.get_room_info()
+
+                    current_status = room_info.get("status")
+                    if current_status == 4:
+                        self._log(room_id, "系统", "直播已结束，停止监控")
+                        self.stop_room(room_id)
+                        break
+                    elif current_status == 2:
+                        pass  # 正常直播中
+                    elif current_status != -1:
+                        self._log(room_id, "系统", f"直播间状态代码: {current_status}，尝试连接...")
+                except Exception as e:
+                    self._log(room_id, "系统", f"状态检测失败: {e}，继续尝试...")
+                # ===================================
+
                 ws = websocket.WebSocketApp(
                     ws_url, header=header_list, cookie=cookie_str,
                     on_open=on_open, on_message=on_message,
@@ -540,7 +353,6 @@ class RoomManager:
 
                 ws.run_forever(ping_interval=10, ping_timeout=5)
 
-                # 检查是否是被主动停止的
                 with self.lock:
                     if self.rooms.get(room_id, {}).get("status") != "running": break
                 time.sleep(2)
@@ -562,7 +374,6 @@ class RoomManager:
 
     def _handle_message(self, room_id, message):
         try:
-            # 寻找 Gzip 头
             gzip_index = -1
             for i in range(len(message) - 1):
                 if message[i] == 0x1f and message[i + 1] == 0x8b:
@@ -586,38 +397,188 @@ class RoomManager:
             pass
 
     def _parse_single_msg(self, room_id, payload, method):
+        """
+        解析单条消息，全量解析并保存
+        """
         try:
             data = None
+            log_priority = "normal"  # normal, high, low
+
+            # 1. 聊天消息
             if method == 'WebcastChatMessage':
                 msg = dy_pb2.ChatMessage()
                 msg.ParseFromString(payload)
-                data = {"msg_type": "chat", "content": msg.content, "user_nick": msg.user.nickName,
-                        "user_uid": str(msg.user.id)}
+                data = {
+                    "msg_type": "chat",
+                    "content": msg.content,
+                    "user_nick": msg.user.nickName,
+                    "user_uid": str(msg.user.id)
+                }
+
+            # 2. 成员进入消息
             elif method == 'WebcastMemberMessage':
                 msg = dy_pb2.MemberMessage()
                 msg.ParseFromString(payload)
-                data = {"msg_type": "member", "content": "进入直播间", "user_nick": msg.user.nickName,
-                        "user_uid": str(msg.user.id)}
+                data = {
+                    "msg_type": "member",
+                    "content": "进入直播间",
+                    "user_nick": msg.user.nickName,
+                    "user_uid": str(msg.user.id)
+                }
+
+            # 3. 礼物消息
             elif method == 'WebcastGiftMessage':
                 msg = dy_pb2.GiftMessage()
                 msg.ParseFromString(payload)
                 count = msg.comboCount or msg.groupCount or msg.repeatCount or 1
-                data = {"msg_type": "gift", "content": f"送礼物 {msg.giftId} x{count}", "user_nick": msg.user.nickName,
-                        "user_uid": str(msg.user.id), "gift_id": str(msg.giftId), "gift_count": count}
+                data = {
+                    "msg_type": "gift",
+                    "content": f"送礼物 {msg.giftId} x{count}",
+                    "user_nick": msg.user.nickName,
+                    "user_uid": str(msg.user.id),
+                    "gift_id": str(msg.giftId),
+                    "gift_count": count
+                }
+                log_priority = "high"
+
+            # 4. 点赞消息
             elif method == 'WebcastLikeMessage':
                 msg = dy_pb2.LikeMessage()
                 msg.ParseFromString(payload)
-                data = {"msg_type": "like", "content": f"点赞 x{msg.count}", "user_nick": msg.user.nickName,
-                        "user_uid": str(msg.user.id), "gift_count": msg.count}
+                data = {
+                    "msg_type": "like",
+                    "content": f"点赞 x{msg.count}",
+                    "user_nick": msg.user.nickName,
+                    "user_uid": str(msg.user.id),
+                    "gift_count": msg.count
+                }
 
+            # 5. 社交消息 (关注/分享)
+            elif method == 'WebcastSocialMessage':
+                msg = dy_pb2.SocialMessage()
+                msg.ParseFromString(payload)
+                action_text = "关注了主播" if msg.action == 1 else "分享了直播间"
+                data = {
+                    "msg_type": "social",
+                    "content": action_text,
+                    "user_nick": msg.user.nickName,
+                    "user_uid": str(msg.user.id)
+                }
+
+            # 6. 直播间统计消息 (在线人数/榜单)
+            elif method == 'WebcastRoomUserSeqMessage':
+                msg = dy_pb2.RoomUserSeqMessage()
+                msg.ParseFromString(payload)
+                online = msg.totalUserStr or str(msg.totalUser)
+                total_pv = msg.totalPvForAnchor or str(msg.total)
+                content = f"当前在线: {online}, 累计观看: {total_pv}"
+                data = {
+                    "msg_type": "stats",
+                    "content": content,
+                    "user_nick": "系统",
+                    "user_uid": "0"
+                }
+                log_priority = "low"
+
+            # 7. 粉丝票/音浪更新消息
+            elif method == 'WebcastUpdateFanTicketMessage':
+                msg = dy_pb2.UpdateFanTicketMessage()
+                msg.ParseFromString(payload)
+                data = {
+                    "msg_type": "heat",
+                    "content": f"当前音浪: {msg.roomFanTicketCountText}",
+                    "user_nick": "系统",
+                    "user_uid": "0"
+                }
+                log_priority = "low"
+
+            # 8. 直播间控制消息 (下播/暂停)
+            elif method == 'WebcastControlMessage':
+                msg = dy_pb2.ControlMessage()
+                msg.ParseFromString(payload)
+                status_map = {1: "直播结束", 3: "直播暂停"}
+                status_text = status_map.get(msg.action, f"状态变更:{msg.action}")
+                data = {
+                    "msg_type": "control",
+                    "content": status_text,
+                    "user_nick": "系统",
+                    "user_uid": "0"
+                }
+                log_priority = "high"
+
+            # 9. 粉丝团消息
+            elif method == 'WebcastFansClubMessage':
+                msg = dy_pb2.FansClubMessage()
+                msg.ParseFromString(payload)
+                data = {
+                    "msg_type": "fans_club",
+                    "content": msg.content,
+                    "user_nick": msg.user.nickName,
+                    "user_uid": str(msg.user.id)
+                }
+
+            # 10. 表情消息
+            elif method == 'WebcastEmojiChatMessage':
+                msg = dy_pb2.EmojiChatMessage()
+                msg.ParseFromString(payload)
+                data = {
+                    "msg_type": "emoji",
+                    "content": msg.defaultContent,
+                    "user_nick": msg.user.nickName,
+                    "user_uid": str(msg.user.id)
+                }
+
+            # 11. 榜单消息 (新增)
+            elif method == 'WebcastRoomRankMessage':
+                msg = dy_pb2.RoomRankMessage()
+                msg.ParseFromString(payload)
+                rank_str = ""
+                if msg.ranksList:
+                    top_user = msg.ranksList[0].user.nickName
+                    rank_str = f"榜一更新: {top_user}"
+                data = {
+                    "msg_type": "rank",
+                    "content": rank_str or "榜单更新",
+                    "user_nick": "系统",
+                    "user_uid": "0"
+                }
+                log_priority = "low"
+
+            # 12. 房间横幅/Banner (新增)
+            elif method == 'WebcastInRoomBannerMessage':
+                msg = dy_pb2.InRoomBannerMessage()
+                msg.ParseFromString(payload)
+                # 解析 extra JSON 数据
+                try:
+                    extra_dict = json.loads(msg.extra) if msg.extra else {}
+                    banner_title = extra_dict.get("title", "横幅消息")
+                except:
+                    banner_title = "横幅消息"
+
+                data = {
+                    "msg_type": "banner",
+                    "content": banner_title,
+                    "user_nick": "系统",
+                    "user_uid": "0"
+                }
+                log_priority = "low"
+
+            # 保存入库并输出日志
             if data:
                 data.update({"room_id": room_id, "display_id": "", "gender": "", "avatar_url": ""})
                 self._save_db(data)
-                icon_map = {'gift': '🎁', 'member': '🚪', 'like': '❤️', 'chat': '💬'}
-                # 简化日志输出，避免控制台刷屏
-                if data['msg_type'] in ['gift', 'chat']:
-                    self._log(room_id, icon_map.get(data['msg_type'], '*'), f"{data['user_nick']}: {data['content']}")
-        except:
+
+                # 图标映射
+                icon_map = {
+                    'gift': '🎁', 'member': '🚪', 'like': '❤️', 'chat': '💬',
+                    'social': '➕', 'stats': '📊', 'heat': '🔥', 'control': '🛑',
+                    'fans_club': '🌟', 'emoji': '😎', 'rank': '🏆', 'banner': '🎏'
+                }
+
+                self._log(room_id, icon_map.get(data['msg_type'], '*'), f"{data['user_nick']}: {data['content']}")
+
+        except Exception as e:
+            # print(f"Parse Error for {method}: {e}")
             pass
 
     def _save_db(self, data):

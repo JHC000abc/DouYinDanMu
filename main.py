@@ -5,14 +5,16 @@ from fastapi.middleware.cors import CORSMiddleware
 import io
 import csv
 import codecs
+import os
+import re
+from datetime import datetime
 from models.models_db import DBConfig
 from utils.utils_dm import *
 from utils.utils_zb import *
 from utils.utils_db import *
-
+from sqlalchemy import create_engine, text
 
 os.environ["EXECJS_RUNTIME"] = "Node"
-
 
 JS_FILE_PATH = "src/js/crypto.js"  # 默认值
 
@@ -40,7 +42,6 @@ async def monitor_page():
 
 @app.get("/script.js")
 async def get_script():
-    # 修改：从根目录进入 src/js 查找
     if os.path.exists("src/js/script.js"):
         return FileResponse("src/js/script.js", media_type="application/javascript")
     return HTMLResponse("console.error('script.js missing')", status_code=404)
@@ -48,13 +49,10 @@ async def get_script():
 
 @app.get("/style.css")
 async def get_css():
-    # 修改：从根目录进入 src/css 查找
     if os.path.exists("src/css/style.css"):
         return FileResponse("src/css/style.css", media_type="text/css")
     return HTMLResponse("/* style.css missing */", media_type="text/css")
 
-
-# === ⚠️ 新增修改：添加针对 monitor.css 和 monitor.js 的路由支持 ===
 
 @app.get("/css/monitor.css")
 async def get_monitor_css():
@@ -103,20 +101,16 @@ def remove_room(room_id: str):
     return {"status": "ok"}
 
 
-# === 新增：获取直播流接口 (升级版) ===
 @app.post("/api/get_live_url")
 def get_live_url_api(room_id: str):
     """
     使用 Requests + JS 签名获取高清流
     """
     custom_headers = None
-
-    # 尝试从弹幕配置中获取 Cookie，以提高解析成功率
     config = manager.get_room_config(room_id)
     if config and "headers" in config:
         custom_headers = config["headers"]
 
-    # 实例化新的 Fetcher
     fetcher = DouyinStreamFetcher(room_id, custom_headers)
     url = fetcher.get_flv_url()
 
@@ -124,6 +118,25 @@ def get_live_url_api(room_id: str):
         return {"success": True, "url": url}
     else:
         return {"success": False, "msg": "解析失败 (可能未开播或 Cookie 无效)"}
+
+
+# === 新增：获取房间详细信息 API ===
+@app.get("/api/room_info/{room_id}")
+def get_room_info_api(room_id: str):
+    """
+    获取直播间详细状态 (在线人数、标题、是否开播)
+    """
+    custom_headers = None
+    config = manager.get_room_config(room_id)
+    if config and "headers" in config:
+        custom_headers = config["headers"]
+
+    fetcher = DouyinStreamFetcher(room_id, custom_headers)
+    info = fetcher.get_room_info()
+    return info
+
+
+# =================================
 
 
 @app.get("/api/db/config")
@@ -202,19 +215,13 @@ def download_room_data(room_id: str):
     )
 
 
-# ================= 新增接口：用于 monitor.html 页面调用 =================
 @app.get("/monitor/{uid}")
 def monitor(uid: str):
     """
-    前端页面调用的接口：
-    1. 接收 UID 或 URL（但这里假设前端已经提取了 ID，或者我们在后端处理链接）
-    2. 如果 uid 是完整链接，尝试提取 ID
-    3. 调用 Recorder 解析流地址
-    4. 返回 JSON 数据
+    前端页面调用的接口
     """
     print(f"🔍 收到解析请求, 参数: {uid}")
 
-    # 简单清洗数据，防止把 https://... 传进来导致拼接错误
     clean_uid = uid
     if "douyin.com" in uid:
         match = re.search(r'(\d{10,})', uid)
@@ -224,9 +231,7 @@ def monitor(uid: str):
 
     url = f"https://live.douyin.com/{clean_uid}"
 
-    # 使用 Recorder
     recorder = DouyinRecorder(url)
-    # 直接调用 get_stream_url() 而不是 record()，因为我们需要返回值
     stream_url = recorder.get_stream_url()
 
     if stream_url:
