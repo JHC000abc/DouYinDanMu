@@ -258,10 +258,11 @@ def monitor(uid: str):
             print(f"   提取到 ID: {clean_uid}")
 
     url = f"https://live.douyin.com/{clean_uid}"
+    print("url",url)
 
     recorder = DouyinRecorder(url)
     stream_url = recorder.get_stream_url()
-
+    print("stream_url",stream_url)
     if stream_url:
         print(f"✅ 解析成功: {stream_url[:50]}...")
         return {"code": 200, "url": stream_url, "msg": "success"}

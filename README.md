@@ -52,3 +52,9 @@ python -m grpc_tools.protoc -I. --python_out=. dy.proto
 ![img_1.png](src/images/img_1.png)
 ![img_2.png](src/images/img_2.png)
 ![img.png](src/images/img_4.png)
+
+9. 安装node环境
+```shell
+sudo apt-get update
+sudo apt-get install -y nodejs npm
+```
