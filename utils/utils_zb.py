@@ -144,6 +144,7 @@ class DouyinRecorder:
         try:
             print(f"正在解析页面: {self.room_url}")
             headers = {"User-Agent": USER_AGENT}
+            self.get_ttwid()
             response = self.session.get(self.room_url, headers=headers, allow_redirects=True, timeout=10)
             final_url = response.url
 

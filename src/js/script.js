@@ -224,18 +224,36 @@ function updateCardUI(card, room) {
     }
 }
 
+// === 修改核心：解析后端返回结果，处理重复添加逻辑 ===
 async function addRoom() {
     const input = document.getElementById('configInput');
-    if (!input.value.trim()) return alert("空");
+    const configValue = input.value.trim();
+    if (!configValue) return alert("配置内容不能为空");
+
     try {
-        await fetch(API_URL + "/api/add", {
+        // 1. 接收 fetch 返回的响应对象
+        const res = await fetch(API_URL + "/api/add", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({config: input.value.trim()})
+            body: JSON.stringify({config: configValue})
         });
-        input.value = "";
-        refreshList();
+
+        // 2. 解析 JSON 结果
+        const data = await res.json();
+
+        // 3. 根据后端返回的 success 字段判断
+        // 现在由于后端拦截了重复ID，若重复 success 将为 false
+        if (data.success) {
+            input.value = ""; // 只有成功时才清空输入框
+            refreshList();
+            showCopyToast(" " + (data.msg || "添加成功"));
+        } else {
+            // 失败（如重复添加）：弹出 alert 警告，且不清空输入框
+            alert("添加失败: " + data.msg);
+        }
     } catch (e) {
+        console.error(e);
+        alert("请求发生异常: " + e.message);
     }
 }
 
@@ -258,7 +276,7 @@ async function startAllRooms() {
     }
 
     // 2. 确认操作
-    if (!confirm(`🚀 确定要一键启动所有任务吗？\n(共 ${cards.length} 个直播间)`)) return;
+    if (!confirm(`确定要一键启动所有任务吗？\n(共 ${cards.length} 个直播间)`)) return;
 
     // 3. 遍历并启动
     let startCount = 0;
@@ -310,7 +328,7 @@ document.getElementById('roomList').addEventListener('click', function (e) {
         // 执行复制逻辑
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(url).then(() => {
-                showCopyToast('📋 链接已复制');
+                showCopyToast('链接已复制');
             }).catch(() => {
                 fallbackCopyTextToClipboard(url);
             });

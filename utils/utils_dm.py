@@ -65,7 +65,6 @@ class DouyinStreamFetcher:
 
         # 2. 复用 recorder 获取真实 ID (含重定向处理)
         real_room_id, web_rid = self.recorder.get_room_id()
-        print(real_room_id, web_rid)
         if not real_room_id:
             return {"error": "无法解析 Room ID", "status": -1}
 
@@ -266,6 +265,17 @@ class RoomManager:
                     "latest_log": r["logs"][-1] if r["logs"] else "等待数据..."
                 })
         return res
+
+
+    def get_map(self):
+        map = {}
+        with self.lock:
+            for rid, r in self.rooms.items():
+                path_match = re.search(r'/(\d+)', r.get("page_url", "#").split('?')[0])
+                if path_match:
+                    web_rid = path_match.group(1)
+                    map[web_rid] = r.get("name", "未知主播")
+        return map
 
     def get_room_config(self, room_id):
         with self.lock:

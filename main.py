@@ -7,6 +7,7 @@ import csv
 import codecs
 import os
 import re
+import json  # ✅ 新增：用于解析配置字符串
 from datetime import datetime
 from models.models_db import DBConfig
 from utils.utils_dm import *
@@ -78,9 +79,36 @@ def list_rooms(): return manager.get_list()
 
 @app.post("/api/add")
 async def add_room(request: Request):
-    data = await request.json()
-    success, msg = manager.add_room(data.get("config"))
-    return {"success": success, "msg": msg}
+    try:
+        data = await request.json()
+        config_str = data.get("config")
+
+        # ✅ 核心修复：在调用 manager 之前，手动检查是否重复
+        if config_str:
+            try:
+                # 1. 将配置字符串解析为 JSON 对象
+                config_json = json.loads(config_str)
+                # 2. 尝试提取房间 ID (字段可能是 room_id, id 或 web_rid)
+                page_url = config_json.get("page_url")
+                path_match = re.search(r'/(\d+)', page_url.split('?')[0])
+                if path_match:
+                    web_rid = path_match.group(1)
+                    current_rooms = manager.get_map()
+                    if current_rooms.get(web_rid) is not None:
+                        print(f"🚫 拦截重复添加: {page_url}")
+                        return {"success": False, "msg": f"直播间 [{current_rooms.get(web_rid)}] 已在列表中！"}
+
+            except Exception as e:
+                # 解析 JSON 失败时不阻断流程，继续交给 manager 处理
+                print(f"⚠️ 预检查解析失败: {e}")
+                return {"success": False, "msg": f"直播间 [{page_url}] 已在列表中！"}
+
+        # 如果通过了预检查，才真正添加
+        success, msg = manager.add_room(config_str)
+        return {"success": success, "msg": msg}
+
+    except Exception as e:
+        return {"success": False, "msg": f"系统错误: 输入有误，请重新从插件复制"}
 
 
 @app.post("/api/start/{room_id}")
