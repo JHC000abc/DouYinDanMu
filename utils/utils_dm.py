@@ -266,7 +266,6 @@ class RoomManager:
                 })
         return res
 
-
     def get_map(self):
         map = {}
         with self.lock:
@@ -490,7 +489,19 @@ class RoomManager:
                 }
                 log_priority = "low"
 
-            # 7. 粉丝票/音浪更新消息
+            # 7. 直播间实时数据 (WebcastRoomStatsMessage)
+            elif method == 'WebcastRoomStatsMessage':
+                msg = dy_pb2.RoomStatsMessage()
+                msg.ParseFromString(payload)
+                data = {
+                    "msg_type": "room_stats",
+                    "content": f"【数据】{msg.displayShort}: {msg.displayValue}",
+                    "user_nick": "系统",
+                    "user_uid": "0"
+                }
+                log_priority = "low"
+
+            # 8. 粉丝票/音浪更新消息
             elif method == 'WebcastUpdateFanTicketMessage':
                 msg = dy_pb2.UpdateFanTicketMessage()
                 msg.ParseFromString(payload)
@@ -502,7 +513,7 @@ class RoomManager:
                 }
                 log_priority = "low"
 
-            # 8. 直播间控制消息 (下播/暂停)
+            # 9. 直播间控制消息 (下播/暂停)
             elif method == 'WebcastControlMessage':
                 msg = dy_pb2.ControlMessage()
                 msg.ParseFromString(payload)
@@ -516,7 +527,7 @@ class RoomManager:
                 }
                 log_priority = "high"
 
-            # 9. 粉丝团消息
+            # 10. 粉丝团消息
             elif method == 'WebcastFansClubMessage':
                 msg = dy_pb2.FansClubMessage()
                 msg.ParseFromString(payload)
@@ -527,7 +538,7 @@ class RoomManager:
                     "user_uid": str(msg.user.id)
                 }
 
-            # 10. 表情消息
+            # 11. 表情消息
             elif method == 'WebcastEmojiChatMessage':
                 msg = dy_pb2.EmojiChatMessage()
                 msg.ParseFromString(payload)
@@ -538,36 +549,182 @@ class RoomManager:
                     "user_uid": str(msg.user.id)
                 }
 
-            # 11. 榜单消息 (新增)
+            # 12. 榜单消息 (WebcastRoomRankMessage)
             elif method == 'WebcastRoomRankMessage':
                 msg = dy_pb2.RoomRankMessage()
                 msg.ParseFromString(payload)
-                rank_str = ""
-                if msg.ranksList:
-                    top_user = msg.ranksList[0].user.nickName
-                    rank_str = f"榜一更新: {top_user}"
+
+                rank_details = []
+                for i, item in enumerate(msg.ranksList):
+                    rank_num = item.rank if item.rank > 0 else i + 1
+
+                    if item.user.id == 111111:
+                        nickname = "虚位以待"
+                    else:
+                        nickname = item.user.nickName
+                        if not nickname:
+                            nickname = item.user.idStr if item.user.idStr else str(item.user.id)
+                            if not nickname or nickname == "0": nickname = "匿名用户"
+
+                    score = getattr(item, 'score', 0)
+                    if score == 0:
+                        score_str = getattr(item, 'scoreStr', "")
+                        if score_str: score = score_str
+
+                    rank_details.append(f"第{rank_num}名: {nickname}({score})")
+
+                content_str = " | ".join(rank_details)
                 data = {
-                    "msg_type": "rank",
-                    "content": rank_str or "榜单更新",
+                    "msg_type": "rank_room",
+                    "content": f"【房间榜单】{content_str}" if content_str else "榜单更新(无数据)",
                     "user_nick": "系统",
                     "user_uid": "0"
                 }
                 log_priority = "low"
 
-            # 12. 房间横幅/Banner (新增)
+            # 13. 贵宾/贡献榜消息 (WebcastRankListMessage)
+            elif method == 'WebcastRankListMessage':
+                msg = dy_pb2.RankListMessage()
+                msg.ParseFromString(payload)
+                rank_details = []
+                for i, item in enumerate(msg.ranksList):
+                    rank_num = item.rank if item.rank > 0 else i + 1
+
+                    if item.user.id == 111111:
+                        nickname = "虚位以待"
+                    else:
+                        nickname = item.user.nickName if item.user.nickName else "匿名用户"
+
+                    score = getattr(item, 'score', 0)
+                    rank_details.append(f"[{rank_num}] {nickname}-{score}")
+
+                content_str = ", ".join(rank_details)
+                data = {
+                    "msg_type": "rank_contribution",
+                    "content": f"【贡献榜】{content_str}",
+                    "user_nick": "系统",
+                    "user_uid": "0"
+                }
+                log_priority = "low"
+
+            # 14. 房间横幅/Banner
             elif method == 'WebcastInRoomBannerMessage':
                 msg = dy_pb2.InRoomBannerMessage()
                 msg.ParseFromString(payload)
-                # 解析 extra JSON 数据
                 try:
                     extra_dict = json.loads(msg.extra) if msg.extra else {}
-                    banner_title = extra_dict.get("title", "横幅消息")
+
+                    def find_banner_text(obj):
+                        texts = []
+                        if isinstance(obj, dict):
+                            for k, v in obj.items():
+                                if k in ["title", "condition_text", "content", "name", "text"]:
+                                    if isinstance(v, list):
+                                        texts.extend([str(i) for i in v])
+                                    elif isinstance(v, str) and v:
+                                        texts.append(v)
+                                else:
+                                    texts.extend(find_banner_text(v))
+                        elif isinstance(obj, list):
+                            for item in obj:
+                                texts.extend(find_banner_text(item))
+                        return texts
+
+                    details = find_banner_text(extra_dict)
+                    if details:
+                        filtered = [d for d in details if len(d) > 1 and not d.isdigit()]
+                        banner_content = f"活动: {' | '.join(filtered)}" if filtered else f"活动: {' | '.join(details[:2])}"
+                    else:
+                        banner_content = "【图片横幅】" if "src" in msg.extra else "横幅消息"
                 except:
-                    banner_title = "横幅消息"
+                    banner_content = "横幅消息"
 
                 data = {
                     "msg_type": "banner",
-                    "content": banner_title,
+                    "content": banner_content,
+                    "user_nick": "系统",
+                    "user_uid": "0"
+                }
+                log_priority = "low"
+
+            # 15. 直播间带货/购买消息 (WebcastLiveShoppingMessage)
+            elif method == 'WebcastLiveShoppingMessage':
+                msg = dy_pb2.LiveShoppingMessage()
+                msg.ParseFromString(payload)
+                data = {
+                    "msg_type": "shopping",
+                    "content": f"【带货】商品ID: {msg.promotionId}, 推广类型: {msg.msgType}",
+                    "user_nick": "系统",
+                    "user_uid": "0"
+                }
+                log_priority = "normal"
+
+            # 16. 小时榜入口消息 (WebcastRanklistHourEntranceMessage) - 精准解析
+            elif method == 'WebcastRanklistHourEntranceMessage':
+                msg = dy_pb2.RanklistHourEntranceMessage()
+                msg.ParseFromString(payload)
+
+                info_texts = []
+                for info in msg.infoList:
+                    try:
+                        # 二次解析：bytes -> RanklistInternalContent
+                        internal = dy_pb2.RanklistInternalContent()
+                        internal.ParseFromString(info.details)
+
+                        for page in internal.pages:
+                            text = ""
+                            # 优先读取 content 字段中的消息
+                            if page.content:
+                                text = page.content.name
+                            elif page.title:
+                                text = page.title
+
+                            if text:
+                                info_texts.append(text)
+                    except Exception:
+                        pass
+
+                content_str = " | ".join(info_texts) if info_texts else "小时榜更新"
+
+                data = {
+                    "msg_type": "rank_hour",
+                    "content": f"【小时榜】{content_str}",
+                    "user_nick": "系统",
+                    "user_uid": "0"
+                }
+                log_priority = "low"
+
+            # 17. 房间数据同步 (WebcastRoomDataSyncMessage)
+            elif method == 'WebcastRoomDataSyncMessage':
+                msg = dy_pb2.RoomDataSyncMessage()
+                msg.ParseFromString(payload)
+                data = {
+                    "msg_type": "sync",
+                    "content": f"数据同步 SyncKey: {msg.syncKey}",
+                    "user_nick": "系统",
+                    "user_uid": "0"
+                }
+                log_priority = "low"
+
+            # 18. 直播间流适配消息 (WebcastRoomStreamAdaptationMessage)
+            elif method == 'WebcastRoomStreamAdaptationMessage':
+                msg = dy_pb2.RoomStreamAdaptationMessage()
+                msg.ParseFromString(payload)
+                data = {
+                    "msg_type": "stream_adapt",
+                    "content": f"流适配时间戳: {msg.timestamp}",
+                    "user_nick": "系统",
+                    "user_uid": "0"
+                }
+                log_priority = "low"
+
+            # 19. 电商通用消息 (WebcastLiveEcomGeneralMessage)
+            elif method == 'WebcastLiveEcomGeneralMessage':
+                msg = dy_pb2.LiveEcomGeneralMessage()
+                msg.ParseFromString(payload)
+                data = {
+                    "msg_type": "ecom_general",
+                    "content": f"电商消息: {msg.content}",
                     "user_nick": "系统",
                     "user_uid": "0"
                 }
@@ -582,7 +739,9 @@ class RoomManager:
                 icon_map = {
                     'gift': '🎁', 'member': '🚪', 'like': '❤️', 'chat': '💬',
                     'social': '➕', 'stats': '📊', 'heat': '🔥', 'control': '🛑',
-                    'fans_club': '🌟', 'emoji': '😎', 'rank': '🏆', 'banner': '🎏'
+                    'fans_club': '🌟', 'emoji': '😎', 'rank_room': '🏆', 'banner': '🎏',
+                    'shopping': '🛒', 'rank_hour': '⏱️', 'sync': '🔄', 'ecom_general': '🛍️',
+                    'room_stats': '📈'
                 }
 
                 self._log(room_id, icon_map.get(data['msg_type'], '*'), f"{data['user_nick']}: {data['content']}")

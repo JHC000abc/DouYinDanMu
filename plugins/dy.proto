@@ -28,7 +28,9 @@ message Message{
     string wrdsSubKey = 8;
 }
 
-// 聊天
+// ==========================================
+// 聊天消息
+// ==========================================
 message ChatMessage {
   Common common = 1;
   User user = 2;
@@ -46,7 +48,7 @@ message ChatMessage {
   bool sendReview = 16;
   bool fromIntercom = 17;
   bool intercomHideUserCard = 18;
-//  repeated chatTagsList = 19;
+  repeated string chatTagsList = 19;
   string chatBy  = 20;
   uint32 individualChatPriority = 21;
   Text rtfContent = 22;
@@ -99,7 +101,9 @@ message RoomUserSeqMessageContributor {
   string exactlyScore = 7;
 }
 
+// ==========================================
 // 礼物消息
+// ==========================================
 message GiftMessage {
   Common common = 1;
   uint64 giftId = 2;
@@ -121,15 +125,15 @@ message GiftMessage {
   PublicAreaCommon publicAreaCommon = 18;
   Text trayDisplayText = 19;
   uint64 bannedDisplayEffects = 20;
-//  GiftTrayInfo trayInfo = 21;
-//  AssetEffectMixInfo assetEffectMixInfo = 22;
+  // GiftTrayInfo trayInfo = 21;
+  // AssetEffectMixInfo assetEffectMixInfo = 22;
   bool displayForSelf = 25;
   string interactGiftInfo = 26;
   string diyItemInfo = 27;
   repeated uint64 minAssetSetList = 28;
   uint64 totalCount = 29;
   uint32 clientGiftSource = 30;
-//  AnchorGiftData anchorGift = 31;
+  // AnchorGiftData anchorGift = 31;
   repeated uint64 toUserIdsList = 32;
   uint64 sendTime = 33;
   uint64 forceDisplayEffects = 34;
@@ -143,7 +147,7 @@ message GiftStruct {
   bool notify = 3;
   uint64 duration = 4;
   uint64 id = 5;
-//  GiftStructFansClubInfo fansclubInfo = 6;
+  // GiftStructFansClubInfo fansclubInfo = 6;
   bool forLinkmic = 7;
   bool doodle = 8;
   bool forFansclub = 9;
@@ -157,7 +161,7 @@ message GiftStruct {
   string region = 17;
   string manual = 18;
   bool forCustom = 19;
-  //  specialEffectsMap = 20;
+  // specialEffectsMap = 20;
   Image icon = 21;
   uint32 actionType = 22;
 }
@@ -191,7 +195,9 @@ message TextEffectDetail {
   uint32 strokeWidth = 15;
 }
 
+// ==========================================
 // 成员消息
+// ==========================================
 message MemberMessage {
   Common common = 1;
   User user = 2;
@@ -305,7 +311,9 @@ message TextFormat {
   bool useRemoteClor = 8;
 }
 
-// 点赞
+// ==========================================
+// 点赞与社交
+// ==========================================
 message LikeMessage {
   Common common = 1;
   uint64 count = 2;
@@ -354,8 +362,6 @@ message EpisodeChatMessage {
    User user = 2;
    string content = 3;
    bool visibleToSende = 4;
-//   BackgroundImage backgroundImage = 5;
-//   PublicAreaCommon publicAreaCommon = 6;
    Image giftImage = 7;
    uint64 agreeMsgId = 8;
    repeated string colorValueList = 9;
@@ -372,13 +378,9 @@ message Against {
   string leftName = 1;
   Image leftLogo = 2;
   string leftGoal = 3;
-//  LeftPlayersList leftPlayersList = 4;
-//  LeftGoalStageDetail leftGoalStageDetail = 5;
   string rightName = 6;
   Image rightLogo = 7;
   string rightGoal = 8;
-//  RightPlayersList rightPlayersList  = 9;
-//  RightGoalStageDetail rightGoalStageDetail = 10;
   uint64 timestamp = 11;
   uint64 version = 12;
   uint64 leftTeamId = 13;
@@ -400,7 +402,6 @@ message Common {
   uint32 monitor = 5;
   bool isShowMsg = 6;
   string describe = 7;
-//  DisplayText displayText = 8;
   uint64 foldType = 9;
   uint64 anchorFoldType = 10;
   uint64 priorityScore = 11;
@@ -408,7 +409,6 @@ message Common {
   string msgProcessFilterK = 13;
   string msgProcessFilterV = 14;
   User user = 15;
-//  Room room = 16;
   uint64 anchorFoldTypeV2  = 17;
   uint64 processAtSeiTimeMs  = 18;
   uint64 randomDispatchMs  = 19;
@@ -418,40 +418,39 @@ message Common {
   uint64 anchorFoldDuration = 23;
 }
 
+// ==========================================
+// User 结构
+// ==========================================
 message User {
   uint64 id = 1;
   uint64 shortId = 2;
   string nickName = 3;
   uint32 gender = 4;
-  string Signature = 5;
-  uint32 Level = 6;
-  uint64 Birthday = 7;
-  string Telephone = 8;
+  string signature = 5;
+  uint32 level = 6;
+  uint64 birthday = 7;
+  string telephone = 8;
   Image AvatarThumb = 9;
   Image AvatarMedium = 10;
   Image AvatarLarge = 11;
-  bool Verified = 12;
-  uint32 Experience = 13;
+  bool verified = 12;
+  uint32 experience = 13;
   string city = 14;
-  int32 Status = 15;
-  uint64 CreateTime = 16;
-  uint64 ModifyTime = 17;
-  uint32 Secret = 18;
-  string ShareQrcodeUri = 19;
-  uint32 IncomeSharePercent = 20;
-  repeated Image BadgeImageList = 21;
+  int32 status = 15;
+  uint64 createTime = 16;
+  uint64 modifyTime = 17;
+  uint32 secret = 18;
+  string shareQrcodeUri = 19;
+  uint32 incomeSharePercent = 20;
+  repeated Image badgeImageList = 21;
   FollowInfo FollowInfo = 22;
-//  PayGrade PayGrade = 23;
-//  FansClub FansClub = 24;
-//  Border Border = 25;
-  string SpecialId = 26;
+  string specialId = 26;
   Image AvatarBorder = 27;
   Image Medal = 28;
   repeated Image RealTimeIconsList = 29;
-  string displayId = 38;
   string secUid = 46;
   uint64 fanTicketCount = 1022;
-  string idStr = 1028;
+  string idStr = 38;
   uint32 ageRange = 1045;
 }
 
@@ -610,10 +609,6 @@ message ProductChangeMessage {
   repeated CategoryInfo updateCategoryInfoList = 8;
 }
 
-// ==========================================
-// 补充的关键消息类型
-// ==========================================
-
 message ControlMessage {
   Common common = 1;
   int32 action = 2;
@@ -638,6 +633,10 @@ message EmojiChatMessage {
   bool intercomHideUserCard = 8;
 }
 
+// ==========================================
+// 榜单相关消息
+// ==========================================
+
 message RoomRankMessage {
   Common common = 1;
   repeated RoomRankMsg ranksList = 2;
@@ -647,6 +646,40 @@ message RoomRankMsg {
   User user = 1;
   string scoreStr = 2;
   bool profileHidden = 3;
+  int64 score = 4;
+  int64 rank = 5;
+}
+
+message RankListMessage {
+  Common common = 1;
+  repeated RoomRankMsg ranksList = 2;
+}
+
+// 小时榜入口消息 (已修复嵌套定义)
+message RanklistHourEntranceMessage {
+    Common common = 1;
+    repeated RanklistHourEntrance infoList = 2;
+}
+
+message RanklistHourEntrance {
+    // 改为 bytes 以支持嵌套解析
+    bytes details = 2;
+}
+
+// 内部结构：用于二次解析 details
+message RanklistInternalContent {
+    repeated RanklistPage pages = 1;
+}
+
+// ⚠️ 关键修改：字段1改为消息类型，精准解析嵌套结构
+message RanklistPage {
+    RanklistPageContent content = 1;
+    int64 type = 2;
+    string title = 3;
+}
+
+message RanklistPageContent {
+    string name = 1;
 }
 
 message RoomStreamAdaptationMessage {
@@ -664,20 +697,23 @@ message InRoomBannerMessage {
   int32 taskId = 7;
 }
 
-// 房间数据同步 (通常包含扩展信息)
 message RoomDataSyncMessage {
   Common common = 1;
   string syncKey = 2;
   int64 version = 3;
-  string payload = 4;
+  bytes payload = 4;
 }
 
-// 连麦KTV消息 (占位，防止报错)
 message LinkMicAudienceKtvMessage {
   Common common = 1;
 }
 
-// 盈利游戏状态 (占位)
 message ProfitGameStatusMessage {
   Common common = 1;
+}
+
+message LiveEcomGeneralMessage {
+  Common common = 1;
+  string content = 2;
+  string extra = 3;
 }
