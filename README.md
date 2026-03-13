@@ -58,3 +58,4 @@ python -m grpc_tools.protoc -I. --python_out=. dy.proto
 sudo apt-get update
 sudo apt-get install -y nodejs npm
 ```
+10. 使用直播监控台功能，请联系作者购买配套插件（Issues里有联系方式），只解析直播间播放地址无需购买插件
